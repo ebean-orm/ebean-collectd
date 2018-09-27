@@ -14,11 +14,24 @@ import java.time.Clock;
 import java.util.concurrent.TimeUnit;
 
 /**
- * A reporter which publishes metric values to a Collectd server.
+ * A reporter which publishes the Ebean metrics to a Collectd server.
+ *
+ * <pre>@{code
+ *
+ *   CollectdReporter.forServer(Ebean.getDefaultServer())
+ *       .withHost("hostContainerName")
+ *       .withCollectdHost("localhost")
+ *       .withCollectdPort(25826)
+ *       .withSecurityLevel(SecurityLevel.ENCRYPT)
+ *       .withUsername("user")
+ *       .withPassword("secret")
+ *       .reportEvery(60);
+ *
+ * }</pre>
  */
 public class CollectdReporter {
 
-  public static Builder forRegistry(EbeanServer server) {
+  public static Builder forServer(EbeanServer server) {
     return new Builder(server);
   }
 
@@ -26,11 +39,11 @@ public class CollectdReporter {
 
     private final EbeanServer server;
 
-    private String destHostName;
+    private String collectdHost;
 
-    private int destPort = 25826;
+    private int collectdPort = 25826;
 
-    private String sourceHostName;
+    private String sourceHost;
 
     private SecurityLevel securityLevel = SecurityLevel.NONE;
 
@@ -47,29 +60,29 @@ public class CollectdReporter {
     /**
      * Set the Collectd hostname to send the metrics to.
      */
-    public Builder withDestHostName(String hostName) {
-      this.destHostName = hostName;
+    public Builder withCollectdHost(String host) {
+      this.collectdHost = host;
       return this;
     }
 
     /**
-     * Set the Collectd port to send the metrics to.
+     * Set the Collectd port to send the metrics to. Defaults to 25826.
      */
-    public Builder withDestPort(int port) {
-      this.destPort = port;
+    public Builder withCollectdPort(int port) {
+      this.collectdPort = port;
       return this;
     }
 
     /**
-     * Set the host of the source metrics.
+     * Set the host of the source metrics (the container host name).
      */
-    public Builder withHostName(String hostName) {
-      this.sourceHostName = hostName;
+    public Builder withHost(String hostName) {
+      this.sourceHost = hostName;
       return this;
     }
 
     /**
-     * Set the clock to use.
+     * Set the clock to use - defaults to the system clock.
      */
     public Builder withClock(Clock clock) {
       this.clock = clock;
@@ -77,7 +90,7 @@ public class CollectdReporter {
     }
 
     /**
-     * Set username for authentication to Collectd.
+     * Set username for authentication to Collectd for Sign or Encrypt.
      */
     public Builder withUsername(String username) {
       this.username = username;
@@ -85,7 +98,7 @@ public class CollectdReporter {
     }
 
     /**
-     * Set password for authentication to Collectd.
+     * Set password for authentication to Collectd for Sign or Encrypt.
      */
     public Builder withPassword(String password) {
       this.password = password;
@@ -102,6 +115,9 @@ public class CollectdReporter {
 
     /**
      * Specify how frequently to report in seconds.
+     * <p>
+     * This registers a task to run periodically in the background.
+     * </p>
      */
     public void reportEvery(long periodSecs) {
 
@@ -123,8 +139,8 @@ public class CollectdReporter {
           throw new IllegalArgumentException("password is required for securityLevel: " + securityLevel);
         }
       }
-      Sender sender = new Sender(destHostName, destPort);
-      return new CollectdReporter(server, sourceHostName, sender, username, password, securityLevel, clock);
+      Sender sender = new Sender(collectdHost, collectdPort);
+      return new CollectdReporter(server, sourceHost, sender, username, password, securityLevel, clock);
     }
   }
 
@@ -160,6 +176,9 @@ public class CollectdReporter {
     }
   }
 
+  /**
+   * Return a runnable to perform periodic reporting of the metrics.
+   */
   public Runnable reportRunnable(long reportFreqSecs) {
     return new ReportRunner(reportFreqSecs);
   }

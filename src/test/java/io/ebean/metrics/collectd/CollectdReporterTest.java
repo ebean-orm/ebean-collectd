@@ -2,6 +2,7 @@ package io.ebean.metrics.collectd;
 
 
 import io.ebean.Ebean;
+import io.ebean.Transaction;
 import org.junit.Test;
 
 public class CollectdReporterTest {
@@ -21,12 +22,22 @@ public class CollectdReporterTest {
   @Test
   public void reportsByteGauges() throws Exception {
 
-    reporter = CollectdReporter.forRegistry(Ebean.getDefaultServer())
-      .withHostName("foobar")
-      .withDestHostName("localhost")
-      .withDestPort(25826)
+    reporter = CollectdReporter.forServer(Ebean.getDefaultServer())
+      .withHost("foo4bar")
+      .withCollectdHost("localhost")
+      .withCollectdPort(25826)
+      .withSecurityLevel(SecurityLevel.ENCRYPT)
+      .withUsername("user0")
+      .withPassword("foo")
       .build();
 
+    for (int i = 0; i < 10; i++) {
+      try (Transaction transaction = Ebean.beginTransaction()) {
+        Ebean.createSqlQuery("select 'one' as one").setLabel("aob").findOne();
+        transaction.commit();
+      }
+
+    }
     reporter.report(60);
   }
 
