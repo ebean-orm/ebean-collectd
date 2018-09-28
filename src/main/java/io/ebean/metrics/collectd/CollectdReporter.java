@@ -239,16 +239,17 @@ public class CollectdReporter {
       write(metaData.typeInstance("count"), metric.getCount());
       write(metaData.typeInstance("max"), metric.getMax());
       write(metaData.typeInstance("mean"), metric.getMean());
+      write(metaData.typeInstance("total"), metric.getTotal());
     }
   }
 
   private void reportMetric(MetaData metaData, MetaTimedMetric timedMetric) {
 
     metaData.plugin(timedMetric.getName());
-
     write(metaData.typeInstance("count"), timedMetric.getCount());
     write(metaData.typeInstance("max"), timedMetric.getMax());
     write(metaData.typeInstance("mean"), timedMetric.getMean());
+    write(metaData.typeInstance("total"), timedMetric.getTotal());
   }
 
   private void connect(Sender sender) throws IOException {
