@@ -234,22 +234,22 @@ public class CollectdReporter {
         log.debug("skip metric on type:{} count:{}", metric.getType(), metric.getCount());
       }
     } else {
-      String fullName = metric.getType().getSimpleName() + ".query." + name;
-      metaData.plugin(fullName);
-      write(metaData.typeInstance("count"), metric.getCount());
-      write(metaData.typeInstance("max"), metric.getMax());
-      write(metaData.typeInstance("mean"), metric.getMean());
-      write(metaData.typeInstance("total"), metric.getTotal());
+      String fullName = "db.query." + metric.getType().getSimpleName() + "." + name;
+      metaData.pluginRaw(fullName);
+      write(metaData.typeInstanceRaw("count"), metric.getCount());
+      write(metaData.typeInstanceRaw("max"), metric.getMax());
+      write(metaData.typeInstanceRaw("mean"), metric.getMean());
+      write(metaData.typeInstanceRaw("total"), metric.getTotal());
     }
   }
 
   private void reportMetric(MetaData metaData, MetaTimedMetric timedMetric) {
 
     metaData.plugin(timedMetric.getName());
-    write(metaData.typeInstance("count"), timedMetric.getCount());
-    write(metaData.typeInstance("max"), timedMetric.getMax());
-    write(metaData.typeInstance("mean"), timedMetric.getMean());
-    write(metaData.typeInstance("total"), timedMetric.getTotal());
+    write(metaData.typeInstanceRaw("count"), timedMetric.getCount());
+    write(metaData.typeInstanceRaw("max"), timedMetric.getMax());
+    write(metaData.typeInstanceRaw("mean"), timedMetric.getMean());
+    write(metaData.typeInstanceRaw("total"), timedMetric.getTotal());
   }
 
   private void connect(Sender sender) throws IOException {

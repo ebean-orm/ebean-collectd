@@ -66,4 +66,13 @@ class MetaData {
         return this;
     }
 
+    MetaData pluginRaw(String name) {
+        plugin = name;
+        return this;
+    }
+
+    MetaData typeInstanceRaw(String name) {
+        typeInstance = name;
+        return this;
+    }
 }
