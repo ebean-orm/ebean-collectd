@@ -53,6 +53,8 @@ public class CollectdReporter {
 
     private Clock clock = Clock.systemDefaultZone();
 
+    private String prefixQuery = "db.query.";
+
     private Builder(EbeanServer server) {
       this.server = server;
     }
@@ -114,6 +116,14 @@ public class CollectdReporter {
     }
 
     /**
+     * Set prefix to use in front of named queries.
+     */
+    public Builder withPrefixQuery(String prefixQuery) {
+      this.prefixQuery = prefixQuery;
+      return this;
+    }
+
+    /**
      * Specify how frequently to report in seconds.
      * <p>
      * This registers a task to run periodically in the background.
@@ -140,7 +150,7 @@ public class CollectdReporter {
         }
       }
       Sender sender = new Sender(collectdHost, collectdPort);
-      return new CollectdReporter(server, sourceHost, sender, username, password, securityLevel, clock);
+      return new CollectdReporter(server, sourceHost, sender, username, password, securityLevel, clock, prefixQuery);
     }
   }
 
@@ -158,11 +168,14 @@ public class CollectdReporter {
 
   private final Clock clock;
 
+  private final String prefixQuery;
+
   private CollectdReporter(EbeanServer server, String hostname, Sender sender, String username, String password,
-                           SecurityLevel securityLevel, Clock clock) {
+                           SecurityLevel securityLevel, Clock clock, String prefixQuery) {
     this.server = server;
     this.clock = clock;
     this.sender = sender;
+    this.prefixQuery = prefixQuery;
     this.hostName = (hostname != null) ? hostname : resolveHostName();
     this.writer = new PacketWriter(sender, username, password, securityLevel);
   }
@@ -234,7 +247,7 @@ public class CollectdReporter {
         log.debug("skip metric on type:{} count:{}", metric.getType(), metric.getCount());
       }
     } else {
-      String fullName = "db.query." + metric.getType().getSimpleName() + "." + name;
+      String fullName = prefixQuery + metric.getType().getSimpleName() + "." + name;
       metaData.pluginRaw(fullName);
       write(metaData.typeInstanceRaw("count"), metric.getCount());
       write(metaData.typeInstanceRaw("max"), metric.getMax());
