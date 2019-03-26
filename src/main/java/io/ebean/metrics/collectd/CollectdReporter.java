@@ -1,5 +1,6 @@
 package io.ebean.metrics.collectd;
 
+import io.ebean.Database;
 import io.ebean.EbeanServer;
 import io.ebean.meta.BasicMetricVisitor;
 import io.ebean.meta.MetaOrmQueryMetric;
@@ -37,7 +38,7 @@ public class CollectdReporter {
 
   public static class Builder {
 
-    private final EbeanServer server;
+    private final Database database;
 
     private String collectdHost;
 
@@ -55,8 +56,8 @@ public class CollectdReporter {
 
     private String prefixQuery = "db.query.";
 
-    private Builder(EbeanServer server) {
-      this.server = server;
+    private Builder(Database database) {
+      this.database = database;
     }
 
     /**
@@ -134,7 +135,7 @@ public class CollectdReporter {
       CollectdReporter collectdReporter = build();
       Runnable runnable = collectdReporter.reportRunnable(periodSecs);
 
-      server.getBackgroundExecutor().executePeriodically(runnable, periodSecs, TimeUnit.SECONDS);
+      database.getBackgroundExecutor().executePeriodically(runnable, periodSecs, TimeUnit.SECONDS);
     }
 
     /**
@@ -150,7 +151,7 @@ public class CollectdReporter {
         }
       }
       Sender sender = new Sender(collectdHost, collectdPort);
-      return new CollectdReporter(server, sourceHost, sender, username, password, securityLevel, clock, prefixQuery);
+      return new CollectdReporter(database, sourceHost, sender, username, password, securityLevel, clock, prefixQuery);
     }
   }
 
@@ -158,7 +159,7 @@ public class CollectdReporter {
 
   private static final String FALLBACK_HOST_NAME = "localhost";
 
-  private final EbeanServer server;
+  private final Database database;
 
   private final String hostName;
 
@@ -170,9 +171,9 @@ public class CollectdReporter {
 
   private final String prefixQuery;
 
-  private CollectdReporter(EbeanServer server, String hostname, Sender sender, String username, String password,
+  private CollectdReporter(Database database, String hostname, Sender sender, String username, String password,
                            SecurityLevel securityLevel, Clock clock, String prefixQuery) {
-    this.server = server;
+    this.database = database;
     this.clock = clock;
     this.sender = sender;
     this.prefixQuery = prefixQuery;
@@ -219,7 +220,7 @@ public class CollectdReporter {
     try {
       connect(sender);
 
-      BasicMetricVisitor basic = server.getMetaInfoManager().visitBasic();
+      BasicMetricVisitor basic = database.getMetaInfoManager().visitBasic();
 
       for (MetaTimedMetric timedMetric : basic.getTimedMetrics()) {
         reportMetric(metaData, timedMetric);
@@ -247,22 +248,21 @@ public class CollectdReporter {
         log.debug("skip metric on type:{} count:{}", metric.getType(), metric.getCount());
       }
     } else {
-      String fullName = prefixQuery + metric.getType().getSimpleName() + "." + name;
-      metaData.pluginRaw(fullName);
-      write(metaData.typeInstanceRaw("count"), metric.getCount());
-      write(metaData.typeInstanceRaw("max"), metric.getMax());
-      write(metaData.typeInstanceRaw("mean"), metric.getMean());
-      write(metaData.typeInstanceRaw("total"), metric.getTotal());
+      metaData.plugin(prefixQuery + metric.getType().getSimpleName() + "." + name);
+      write(metaData.typeInstance("count"), metric.getCount());
+      write(metaData.typeInstance("max"), metric.getMax());
+      write(metaData.typeInstance("mean"), metric.getMean());
+      write(metaData.typeInstance("total"), metric.getTotal());
     }
   }
 
   private void reportMetric(MetaData metaData, MetaTimedMetric timedMetric) {
 
     metaData.plugin(timedMetric.getName());
-    write(metaData.typeInstanceRaw("count"), timedMetric.getCount());
-    write(metaData.typeInstanceRaw("max"), timedMetric.getMax());
-    write(metaData.typeInstanceRaw("mean"), timedMetric.getMean());
-    write(metaData.typeInstanceRaw("total"), timedMetric.getTotal());
+    write(metaData.typeInstance("count"), timedMetric.getCount());
+    write(metaData.typeInstance("max"), timedMetric.getMax());
+    write(metaData.typeInstance("mean"), timedMetric.getMean());
+    write(metaData.typeInstance("total"), timedMetric.getTotal());
   }
 
   private void connect(Sender sender) throws IOException {

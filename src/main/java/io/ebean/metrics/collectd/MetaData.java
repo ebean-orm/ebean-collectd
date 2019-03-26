@@ -47,7 +47,7 @@ class MetaData {
     }
 
     MetaData plugin(String name) {
-        plugin = Sanitize.name(name);
+        plugin = name;
         return this;
     }
 
@@ -62,16 +62,6 @@ class MetaData {
     }
 
     MetaData typeInstance(String name) {
-        typeInstance = Sanitize.instanceName(name);
-        return this;
-    }
-
-    MetaData pluginRaw(String name) {
-        plugin = name;
-        return this;
-    }
-
-    MetaData typeInstanceRaw(String name) {
         typeInstance = name;
         return this;
     }
