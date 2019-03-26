@@ -1,7 +1,6 @@
 package io.ebean.metrics.collectd;
 
 import io.ebean.Database;
-import io.ebean.EbeanServer;
 import io.ebean.meta.BasicMetricVisitor;
 import io.ebean.meta.MetaOrmQueryMetric;
 import io.ebean.meta.MetaQueryMetric;
@@ -32,8 +31,8 @@ import java.util.concurrent.TimeUnit;
  */
 public class CollectdReporter {
 
-  public static Builder forServer(EbeanServer server) {
-    return new Builder(server);
+  public static Builder forServer(Database database) {
+    return new Builder(database);
   }
 
   public static class Builder {
