@@ -1,7 +1,7 @@
 package io.ebean.metrics.collectd;
 
 
-import io.ebean.Ebean;
+import io.ebean.DB;
 import io.ebean.Transaction;
 import org.junit.Test;
 
@@ -20,9 +20,9 @@ public class CollectdReporterTest {
 //    }
 
   @Test
-  public void reportsByteGauges() throws Exception {
+  public void reportsByteGauges() {
 
-    reporter = CollectdReporter.forServer(Ebean.getDefaultServer())
+    reporter = CollectdReporter.forServer(DB.getDefault())
       .withHost("foo4bar")
       .withCollectdHost("localhost")
       .withCollectdPort(25826)
@@ -32,8 +32,8 @@ public class CollectdReporterTest {
       .build();
 
     for (int i = 0; i < 10; i++) {
-      try (Transaction transaction = Ebean.beginTransaction()) {
-        Ebean.createSqlQuery("select 'one' as one").setLabel("aob").findOne();
+      try (Transaction transaction = DB.beginTransaction()) {
+        DB.sqlQuery("select 'one' as one").setLabel("aob").findOne();
         transaction.commit();
       }
 

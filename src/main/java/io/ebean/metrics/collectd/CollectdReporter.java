@@ -2,7 +2,7 @@ package io.ebean.metrics.collectd;
 
 import io.ebean.Database;
 import io.ebean.meta.BasicMetricVisitor;
-import io.ebean.meta.MetaOrmQueryMetric;
+import io.ebean.meta.MetaCountMetric;
 import io.ebean.meta.MetaQueryMetric;
 import io.ebean.meta.MetaTimedMetric;
 import org.slf4j.Logger;
@@ -38,21 +38,13 @@ public class CollectdReporter {
   public static class Builder {
 
     private final Database database;
-
     private String collectdHost;
-
     private int collectdPort = 25826;
-
     private String sourceHost;
-
     private SecurityLevel securityLevel = SecurityLevel.NONE;
-
     private String username = "";
-
     private String password = "";
-
     private Clock clock = Clock.systemDefaultZone();
-
     private String prefixQuery = "db.query.";
 
     private Builder(Database database) {
@@ -130,11 +122,9 @@ public class CollectdReporter {
      * </p>
      */
     public void reportEvery(long periodSecs) {
-
       CollectdReporter collectdReporter = build();
       Runnable runnable = collectdReporter.reportRunnable(periodSecs);
-
-      database.getBackgroundExecutor().executePeriodically(runnable, periodSecs, TimeUnit.SECONDS);
+      database.backgroundExecutor().scheduleWithFixedDelay(runnable, periodSecs, periodSecs, TimeUnit.SECONDS);
     }
 
     /**
@@ -155,19 +145,13 @@ public class CollectdReporter {
   }
 
   private static final Logger log = LoggerFactory.getLogger(CollectdReporter.class);
-
   private static final String FALLBACK_HOST_NAME = "localhost";
 
   private final Database database;
-
   private final String hostName;
-
   private final Sender sender;
-
   private final PacketWriter writer;
-
   private final Clock clock;
-
   private final String prefixQuery;
 
   private CollectdReporter(Database database, String hostname, Sender sender, String username, String password,
@@ -211,57 +195,56 @@ public class CollectdReporter {
   }
 
   public void report(long period) {
-
     log.debug("reporting metrics ...");
     long epochSecs = clock.millis() / 1000;
     MetaData metaData = new MetaData(hostName, epochSecs, period);
-
     try {
       connect(sender);
 
-      BasicMetricVisitor basic = database.getMetaInfoManager().visitBasic();
-
-      for (MetaTimedMetric timedMetric : basic.getTimedMetrics()) {
+      BasicMetricVisitor basic = database.metaInfo().visitBasic();
+      for (MetaTimedMetric timedMetric : basic.timedMetrics()) {
         reportMetric(metaData, timedMetric);
       }
-      for (MetaOrmQueryMetric queryMetric : basic.getOrmQueryMetrics()) {
+      for (MetaQueryMetric queryMetric : basic.queryMetrics()) {
         reportQueryMetric(metaData, queryMetric);
       }
-      for (MetaQueryMetric queryMetric : basic.getDtoQueryMetrics()) {
-        reportQueryMetric(metaData, queryMetric);
+      for (MetaCountMetric countMetric : basic.countMetrics()) {
+        reportCountMetric(metaData, countMetric);
       }
 
     } catch (Exception e) {
       log.warn("Error trying to send metrics to Collectd", e);
-
     } finally {
       disconnect(sender);
     }
   }
 
-  private void reportQueryMetric(MetaData metaData, MetaQueryMetric metric) {
+  private void reportCountMetric(MetaData metaData, MetaCountMetric countMetric) {
+    metaData.plugin(countMetric.name());
+    write(metaData.typeInstance("count"), countMetric.count());
+  }
 
-    String name = metric.getName();
+  private void reportQueryMetric(MetaData metaData, MetaQueryMetric metric) {
+    String name = metric.name();
     if (name == null) {
       if (log.isTraceEnabled()) {
-        log.debug("skip metric on type:{} count:{}", metric.getType(), metric.getCount());
+        log.debug("skip metric on type:{} count:{}", metric.type(), metric.count());
       }
     } else {
-      metaData.plugin(prefixQuery + metric.getType().getSimpleName() + "." + name);
-      write(metaData.typeInstance("count"), metric.getCount());
-      write(metaData.typeInstance("max"), metric.getMax());
-      write(metaData.typeInstance("mean"), metric.getMean());
-      write(metaData.typeInstance("total"), metric.getTotal());
+      metaData.plugin(prefixQuery + metric.type().getSimpleName() + "." + name);
+      write(metaData.typeInstance("count"), metric.count());
+      write(metaData.typeInstance("max"), metric.max());
+      write(metaData.typeInstance("mean"), metric.mean());
+      write(metaData.typeInstance("total"), metric.total());
     }
   }
 
   private void reportMetric(MetaData metaData, MetaTimedMetric timedMetric) {
-
-    metaData.plugin(timedMetric.getName());
-    write(metaData.typeInstance("count"), timedMetric.getCount());
-    write(metaData.typeInstance("max"), timedMetric.getMax());
-    write(metaData.typeInstance("mean"), timedMetric.getMean());
-    write(metaData.typeInstance("total"), timedMetric.getTotal());
+    metaData.plugin(timedMetric.name());
+    write(metaData.typeInstance("count"), timedMetric.count());
+    write(metaData.typeInstance("max"), timedMetric.max());
+    write(metaData.typeInstance("mean"), timedMetric.mean());
+    write(metaData.typeInstance("total"), timedMetric.total());
   }
 
   private void connect(Sender sender) throws IOException {
